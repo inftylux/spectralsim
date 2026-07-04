@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spektrometer-Simulation (SPA)</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1>Spektrometer-Simulation</h1>
+        <p>Physikalische Simulation für kontinuierliche und linienförmige Spektren</p>
+      </div>
+      <button id="helpBtn">HELP</button>
+    </header>
+
+    <section class="panel controls">
+      <div class="grid">
+        <label>Quelle
+          <select id="source">
+            <option value="white">Weißlicht</option>
+            <option value="fluorescent">Leuchtstofflampe</option>
+            <option value="sodium">Natriumlampe</option>
+            <option value="mercury">Quecksilberlampe</option>
+            <option value="hydrogen">Wasserstofflampe</option>
+            <option value="helium">Heliumlampe</option>
+            <option value="neon">Neonlampe</option>
+            <option value="custom">Benutzerdefiniert</option>
+          </select>
+        </label>
+        <label>Gitterlinien/mm
+          <input id="lines_per_mm" type="number" value="600" min="50" max="2400" step="50">
+        </label>
+        <label>Beugungsordnung
+          <input id="order" type="number" value="1" min="1" max="5" step="1">
+        </label>
+        <label>Spaltbreite
+          <input id="slit_width" type="number" value="0.8" min="0.1" max="10" step="0.1">
+        </label>
+        <label>Farbtemperatur Weißlicht
+          <input id="temperature" type="number" value="6500" min="1500" max="12000" step="100">
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>1D-Spektrum</h2>
+      <div class="chart-container">
+        <canvas id="spectrumChart"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Spektrometerbild</h2>
+      <canvas id="imageCanvas" width="900" height="180"></canvas>
+    </section>
+
+    <section class="panel">
+      <h2>Berechnete Linien</h2>
+      <div id="peaks"></div>
+    </section>
+  </div>
+
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <div id="helpText"></div>
+    </div>
+  </div>
+
+  <script id="readmeContent" type="text/markdown">
+# Spektrometer-Simulation (SpectralSim)
+
+Eine interaktive Web-basierte Applikation zur physikalischen Simulation und Exploration optischer Spektren. Die Software ermöglicht es, den Blick durch ein Gitterspektrometer zu simulieren, und bietet sowohl visuelle als auch quantitative Werkzeuge zur Analyse von kontinuierlichen und diskreten Lichtquellen.
+
+---
+
+## 1. Features
+- **Interaktive Spektroskopie:** Unmittelbares visuelles Feedback bei Änderungen von optischen Parametern.
+- **Präzise Ausrichtung:** 1D-Intensitätsdiagramm und 2D-Kamera-Ansicht sind physikalisch exakt synchronisiert. Die Pixelverteilung im Bild folgt streng dem nicht-linearen Dispersionsmodell des Beugungsgitters.
+- **Klassische Spektren:** Auswahl zwischen Weißlicht (Planck-Strahler) und klassischen Emissionsspektren (Wasserstoff, Helium, Neon, Quecksilber, Natrium, Leuchtstoffröhre).
+- **Berechnete Linien:** Tabellarische Ausgabe der berechneten Beugungswinkel und Beugungsordnungen der dominanten Emissionslinien.
+
+---
+
+## 2. Physikalische Grundlagen
+
+Diese Simulation berechnet keine frei erfundenen Grafiken, sondern basiert auf den Modellen der Wellen- und Quantenoptik.
+
+### 2.1 Die Gittergleichung
+Kern der optischen Simulation ist das optische Beugungsgitter. Die Position einer Spektrallinie ergibt sich aus der Gittergleichung:
+
+**$n \cdot \lambda = d \cdot \sin(\theta)$**
+
+- **$n$** = Beugungsordnung (1, 2, 3...)
+- **$\lambda$** = Wellenlänge des Lichts
+- **$d$** = Gitterkonstante (Abstand zwischen zwei Gitterlinien, z.B. $d = 1\text{ mm} / 600$)
+- **$\theta$** = Beugungswinkel
+
+Je größer die Gitterstrichzahl pro mm (also je kleiner $d$) oder je höher die Beugungsordnung $n$, desto stärker wird das Licht gebeugt und das Spektrum auseinandergezogen (Dispersion).
+
+### 2.2 Kontinuierliche vs. Diskrete Spektren
+- **Weißlicht (Kontinuierlich):** Die thermische Emission wird durch das **Plancksche Strahlungsgesetz** angenähert. Die Intensitätsverteilung ist stark abhängig von der Farbtemperatur (z.B. 6500 K für Tageslicht). 
+- **Gasentladungslampen (Diskret):** Atome in Gasen können durch Stöße angeregt werden. Wenn Elektronen auf tiefere Energieniveaus zurückfallen, senden sie Photonen mit exakt definierter Energie aus ($\Delta E = h \cdot f = h \cdot c / \lambda$). Dies führt zu Linienspektren. Die Simulation nutzt für jede Linie normierte Gauß-Profile zur Darstellung der natürlichen bzw. instrumentellen Linienbreite.
+
+### 2.3 Die Spaltbreite
+Jedes reale Spektrometer besitzt einen Eintrittsspalt. Das Spektrometerbild ist im Grunde eine unendliche Überlagerung von farbigen Abbildungen dieses Spaltes. Ein breiter Spalt führt zu viel Licht, aber zu einer instrumentellen Unschärfe, wodurch eng benachbarte Spektrallinien (z.B. das Natrium-Dublett) überlappen können.
+
+---
+
+## 3. Bedienung & Simulationsparameter
+
+Im Interface stehen folgende Stellschrauben zur Verfügung:
+- **Quelle:** Wählt das simulierte Leuchtmittel aus.
+- **Gitterlinien/mm:** Regelt die Gitterkonstante $d$. Hohe Linienzahlen erzeugen breitere Spektren.
+- **Beugungsordnung:** Wählt die $n$-te Beugungsordnung. Höhere Ordnungen spreizen das Spektrum stärker, können aber bei realen Spektrometern zu Überlappungen und reduzierter Intensität führen.
+- **Spaltbreite:** Verändert die Breite des Eintrittsspalts und reguliert damit das theoretische Auflösungsvermögen.
+- **Farbtemperatur Weißlicht:** Bestimmt die spektrale Verteilung (rötlich vs. bläulich) eines simulierten glühenden Körpers.
+
+---
+
+## 4. Didaktischer Experimentierplan
+
+Dieser Lehrplan eignet sich für den Physikunterricht oder das physikalische Praktikum im Grundstudium, um grundlegende Prinzipien der Spektroskopie zu demonstrieren.
+
+### Experiment 1: Kontinuum vs. Quantisierung
+**Ziel:** Den fundamentalen Unterschied zwischen thermischen Strahlern und Quantensprüngen verstehen.
+1. Wähle als Quelle **Weißlicht** und belasse alle Parameter auf Standard (600 Linien/mm, Ordnung 1).
+2. Beobachte das 1D-Spektrum: Es ist ein durchgehendes Band ohne Lücken.
+3. Ändere die Farbtemperatur schrittweise von 3000 K auf 10000 K. Beobachte, wie sich das Maximum (Wien'sches Verschiebungsgesetz) verschiebt.
+4. Wechsle nun zur **Wasserstofflampe**. 
+5. Es erscheinen scharf abgetrennte Linien (Balmer-Serie). Die Quantennatur des Atoms verbietet Lichtabstrahlung bei Zwischenwellenlängen.
+
+### Experiment 2: Dispersion und die Gittergleichung
+**Ziel:** Erkennen, wie Gitterkonstante und Wellenlänge den Beugungswinkel beeinflussen.
+1. Wähle die **Heliumlampe** (bietet Linien im gesamten Bereich).
+2. Betrachte die *Berechneten Linien* unter dem Bild. Notiere den Winkel $\theta$ für die blaue Linie (ca. 447 nm) und die rote Linie (ca. 667 nm). Rotes Licht wird stärker gebeugt als blaues!
+3. Halbiere die **Gitterlinien/mm** (z.B. von 600 auf 300).
+4. Beobachte: Das Spektrometerbild wird gestaucht, die Winkel $\theta$ in der Tabelle halbieren sich annähernd. (Mathematische Bestätigung: $\sin(\theta) \sim \theta$ für kleine Winkel).
+
+### Experiment 3: Die Natrium D-Linie und das Auflösungsvermögen
+**Ziel:** Rayleigh-Kriterium und Apparatefunktion verstehen.
+1. Wähle die **Natriumlampe**. Das Spektrum wird von einer massiven orange-gelben Linie bei 589 nm dominiert. In Wahrheit sind es zwei sehr dicht beieinanderliegende Linien (589.0 nm und 589.6 nm).
+2. Wähle **600 Linien/mm**, Ordnung 1.
+3. Reduziere die **Spaltbreite** auf `0.1`.
+4. Betrachte das 1D-Spektrum: Du solltest nun knapp erkennen können, dass der Peak aus zwei nahe beieinanderliegenden Spitzen besteht (Dublett).
+5. Erhöhe die Spaltbreite langsam auf `2.0`. Beobachte, wie die instrumentelle Unschärfe die beiden Linien verschluckt.
+
+### Experiment 4: Das Phänomen der höheren Ordnungen
+**Ziel:** Vor- und Nachteile höherer Beugungsordnungen analysieren.
+1. Wähle **Neonlampe** bei **300 Linien/mm** und Spaltbreite `0.5`.
+2. Erhöhe die **Beugungsordnung** schrittweise auf 2, dann 3.
+3. Beobachte die Winkel: Bei Ordnung 2 ist das Spektrum doppelt so breit aufgefächert, die Auflösung steigt.
+4. Grenze der Simulation testen: Stelle **1000 Linien/mm** und **Ordnung 2** ein. Was passiert? Einige lange Wellenlängen (Rot) verschwinden aus dem sichtbaren und messbaren Winkelbereich (Totalreflexion oder $\sin(\theta) > 1$). Die Gittergleichung liefert keine reelle Lösung mehr.
+
+
+  </script>
+  <script src="app.js"></script>
+
+<footer class="site-footer">
+  Spektrometer-Simulation | (c) 2026 | <a href="#" id="impressumLink">Impressum</a>
+</footer>
+
+<div id="impressumModal" class="modal">
+  <div class="modal-content impressum-box">
+    <span class="close-btn" id="closeImpressum">&times;</span>
+    <div id="impressumText">
+            <h3>Impressum</h3>
+            <div style="text-align: left; line-height: 1.6;">
+                <p><strong>Angaben gemäß § 5 TMG</strong></p>
+                <p>
+                    Ulrich Potthoff<br>
+                    Schönbergstr. 42<br>
+                    01239 Dresden<br>
+                    Deutschland
+                </p>
+                
+                <p style="margin-top: 15px;"><strong>Kontakt</strong></p>
+                <p>
+                    Telefon: +49 (0) 351 4527849<br>
+                    E-Mail: ulrich.potthoff@web.de
+                </p>
+                
+                <p style="margin-top: 15px;"><strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</strong></p>
+                <p>
+                    Ulrich Potthoff<br>
+                    Schönbergstr. 42<br>
+                    01239 Dresden<br>
+                    Deutschland
+                </p>
+                
+                <p style="margin-top: 15px;"><strong>Haftungsausschluss</strong></p>
+                <p style="font-size: 0.9em;">
+                    <strong>Haftung für Inhalte:</strong> Die Inhalte dieser Anwendung wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Berechnungen kann jedoch keine Gewähr übernommen werden.
+                </p>
+                
+
+                <p style="margin-top: 15px;"><strong>Datenschutzerklärung</strong></p>
+                <p style="font-size: 0.9em;">
+Diese Website wird als statische Website über GitHub Pages betrieben.
+Anbieter ist die GitHub Inc., 88 Colin P. Kelly Jr. Street,
+San Francisco, CA 94107, USA.<br>
+
+Beim Aufruf der Website werden durch GitHub automatisch Informationen
+in sogenannten Server-Logfiles erhoben. Dies sind insbesondere
+IP-Adresse, Browsertyp, Betriebssystem sowie Datum und Uhrzeit des Zugriffs.
+
+Diese Daten werden nicht von mir ausgewertet oder mit anderen
+Datenquellen zusammengeführt.
+
+Die Verarbeitung erfolgt im berechtigten Interesse gemäß
+Art. 6 Abs. 1 lit. f DSGVO zur sicheren und stabilen Bereitstellung
+der Website.<br>
+
+Es werden keine Cookies gesetzt und keine personenbezogenen Daten
+durch diese Website gespeichert oder verarbeitet.<br>
+
+Weitere Informationen zum Datenschutz bei GitHub:
+https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement
+                </p>
+
+
+            </div>
+
+    </div>
+  </div>
+</div>
+
+
+</body>
+</html>
