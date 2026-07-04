@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
 
-        // Bild am Ende des Hilfetextes einfügen
+        // Bild am Ende des Hilfetextes
         const img = document.createElement('img');
         img.src = 'favicon.png';           // ← Hier den Dateinamen anpassen falls nötig
         img.alt = 'Spektrometer-Simulation Logo';

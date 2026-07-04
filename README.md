@@ -3,9 +3,6 @@
 SpectralSim ist eine interaktive Web-Simulation eines Gitterspektrometers.  
 Die Anwendung visualisiert kontinuierliche und diskrete Spektren, berechnet Beugungswinkel und zeigt die spektrale Verteilung sowohl als Diagramm als auch als Spektrometerbild.
 
-<p align="center">
-  <img src="favicon.png" width="300" alt="Glimmlampe">
-</p>
 
 ## Funktionen
 
@@ -89,6 +86,14 @@ Dadurch wird sichtbar, warum reale Spektren nicht nur von der Lichtquelle, sonde
 Die Simulation ist didaktisch und vereinfacht.  
 Sie bildet keine vollständige Laboroptik ab, sondern konzentriert sich auf die wichtigsten Zusammenhänge der klassischen Spektroskopie.  
 Effekte wie Detektorrauschen, Aberrationen, Polarisation oder genaue Kalibrierung sind nicht Teil des Modells [file:1].
+
+
+## Ein interessantes reales Spektrum hat eine Glimmlampe
+
+<p align="center">
+  <img src="favicon.png" width="300" alt="Glimmlampe">
+</p>
+
 
 ## Lizenz
 
