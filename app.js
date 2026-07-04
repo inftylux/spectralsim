@@ -37,6 +37,28 @@ const lamp_db = {
   }
 };
 
+const absorption_db = {
+  "sodium": {
+    "lines_nm": [589.0, 589.6],
+    "depths": [1.0, 0.95],
+    "sigma_nm": 0.4,
+    "description": "Natrium D-Linien (Atomspektroskopie)"
+  },
+  "hydrogen": {
+    "lines_nm": [410.2, 434.0, 486.1, 656.3],
+    "depths": [0.6, 0.75, 0.85, 1.0],
+    "sigma_nm": 0.35,
+    "description": "Balmer-Absorptionslinien (Sternspektren)"
+  },
+  "chlorophyll": {
+    "bands": [
+      {center: 430, width: 45, depth: 0.95},
+      {center: 662, width: 35, depth: 0.9}
+    ],
+    "description": "Chlorophyll-Absorptionsbänder (Pflanzenpigmente)"
+  }
+};
+
 function linspace(start, end, num) {
   const arr = new Float32Array(num);
   const step = (end - start) / (num - 1);
@@ -145,6 +167,39 @@ function source_spectrum(source, wavelengths, params) {
   return normalize(spec);
 }
 
+function absorption_profile(wavelengths, abs_type) {
+  const abs = absorption_db[abs_type];
+  let transmission = new Float32Array(wavelengths.length);
+  for(let i = 0; i < wavelengths.length; i++) transmission[i] = 1.0;
+
+  if (abs.lines_nm) {
+    for (let j = 0; j < abs.lines_nm.length; j++) {
+      const g = gaussian(wavelengths, abs.lines_nm[j], abs.sigma_nm || 0.5);
+      const depth = abs.depths[j] || 0.9;
+      for(let i = 0; i < wavelengths.length; i++) {
+        transmission[i] *= (1.0 - depth * g[i]);
+      }
+    }
+  } else if (abs.bands) {
+    for (let band of abs.bands) {
+      const g = gaussian(wavelengths, band.center, band.width / 2.355);
+      const depth = band.depth || 0.9;
+      for(let i = 0; i < wavelengths.length; i++) {
+        transmission[i] *= (1.0 - depth * g[i]);
+      }
+    }
+  }
+  return transmission;
+}
+
+function apply_absorption(base_spec, transmission) {
+  const result = new Float32Array(base_spec.length);
+  for(let i = 0; i < base_spec.length; i++) {
+    result[i] = base_spec[i] * transmission[i];
+  }
+  return result;
+}
+
 function wavelength_to_rgb(wl) {
   let r = 0, g = 0, b = 0;
   if (wl >= 380 && wl < 440) { r = -(wl - 440)/(440 - 380); b = 1.0; }
@@ -166,7 +221,9 @@ function wavelength_to_rgb(wl) {
 
 function getParams() {
   return {
+    mode: document.getElementById('mode').value,
     source: document.getElementById('source').value,
+    absorption_type: document.getElementById('absorption_type') ? document.getElementById('absorption_type').value : 'sodium',
     params: {
       lines_per_mm: parseFloat(document.getElementById('lines_per_mm').value),
       order: parseInt(document.getElementById('order').value),
@@ -246,13 +303,13 @@ function drawImage(imgDataArray, width, height) {
   imageCtx.putImageData(img, 0, 0);
 }
 
-function renderPeaks(peaks) {
+function renderPeaks(peaks, label = "Linie") {
   if (!peaks.length) {
-    peaksEl.innerHTML = '<div class="peak">Keine sichtbaren Linien im gewählten Bereich.</div>';
+    peaksEl.innerHTML = `<div class="peak">Keine sichtbaren ${label.toLowerCase()}n im gewählten Bereich.</div>`;
     return;
   }
   peaksEl.innerHTML = peaks.map(p =>
-    `<div class="peak">${p.wavelength_nm.toFixed(1)} nm · Ordnung ${p.order} · Winkel ${p.angle_deg.toFixed(2)}°</div>`
+    `<div class="peak">${p.wavelength_nm.toFixed(1)} nm · ${label} · Ordnung ${p.order} · Winkel ${p.angle_deg.toFixed(2)}°</div>`
   ).join('');
 }
 
@@ -266,7 +323,13 @@ function update() {
   const d_nm = 1e6 / payload.params.lines_per_mm;
   
   const chartWavelengths = linspace(VISIBLE_MIN, VISIBLE_MAX, 1200);
-  const spec1D = source_spectrum(payload.source, chartWavelengths, payload.params);
+  let baseSpec = source_spectrum(payload.source, chartWavelengths, payload.params);
+  let spec1D = baseSpec;
+
+  if (payload.mode === "absorption") {
+    const trans = absorption_profile(chartWavelengths, payload.absorption_type);
+    spec1D = apply_absorption(baseSpec, trans);
+  }
   
   const rMin = Math.max(-1, Math.min(1, order * 380 / d_nm));
   const rMax = Math.max(-1, Math.min(1, order * 750 / d_nm));
@@ -300,7 +363,13 @@ function update() {
   }
 
   let lines = [];
-  if (lamp_db[payload.source]) {
+  let peakLabel = "Linie";
+  if (payload.mode === "absorption") {
+    const abs = absorption_db[payload.absorption_type];
+    if (abs.lines_nm) lines = abs.lines_nm;
+    else if (abs.bands) lines = abs.bands.map(b => b.center);
+    peakLabel = "Absorptionslinie";
+  } else if (lamp_db[payload.source]) {
     lines = lamp_db[payload.source].lines_nm || [];
   }
   
@@ -312,10 +381,15 @@ function update() {
       validPeaks.push({"wavelength_nm": wl, "angle_deg": theta, "order": order});
     }
   }
-  renderPeaks(validPeaks);
+  renderPeaks(validPeaks, peakLabel);
 
   const imgWavelengths = linspace(VISIBLE_MIN, VISIBLE_MAX, width);
-  const specImg = source_spectrum(payload.source, imgWavelengths, payload.params);
+  let specImg = source_spectrum(payload.source, imgWavelengths, payload.params);
+  
+  if (payload.mode === "absorption") {
+    const transImg = absorption_profile(imgWavelengths, payload.absorption_type);
+    specImg = apply_absorption(specImg, transImg);
+  }
   
   const lineRgb = new Float32Array(width * 3);
   const sigma_px = Math.max(1.2, 1.2 + payload.params.slit_width * 2.0);
@@ -371,6 +445,22 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('input').forEach(el => el.addEventListener('input', update));
   document.querySelectorAll('select').forEach(el => el.addEventListener('change', update));
 
+  // Mode switching
+  const modeSelect = document.getElementById('mode');
+  const absLabel = document.getElementById('absorption-label');
+  if (modeSelect && absLabel) {
+    modeSelect.addEventListener('change', () => {
+      absLabel.style.display = modeSelect.value === 'absorption' ? 'flex' : 'none';
+      if (modeSelect.value === 'absorption') {
+        const sourceSelect = document.getElementById('source');
+        if (sourceSelect && sourceSelect.value !== 'white') {
+          sourceSelect.value = 'white';
+        }
+      }
+      update();
+    });
+  }
+
   // Modal-Logik
   const helpModal = document.getElementById('helpModal');
   const helpBtn = document.getElementById('helpBtn');
@@ -381,7 +471,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const impressumModal = document.getElementById('impressumModal');
   const closeImpressum = document.getElementById('closeImpressum');
 
-  // Help Modal
   if (helpBtn) {
     helpBtn.addEventListener('click', () => {
       helpModal.style.display = "block";
@@ -399,9 +488,8 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
 
-        // Bild am Ende des Hilfetextes
         const img = document.createElement('img');
-        img.src = 'favicon.png';           // ← Hier den Dateinamen anpassen falls nötig
+        img.src = 'favicon.png';
         img.alt = 'Spektrometer-Simulation Logo';
         img.style.maxWidth = '50%';
         img.style.marginTop = '25px';
@@ -418,7 +506,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Impressum Modal
   if (impressumLink && impressumModal && closeImpressum) {
     impressumLink.addEventListener('click', (e) => {
       e.preventDefault();
@@ -434,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Help Modal Außerhalb-Klick
   window.addEventListener('click', (event) => {
     if (event.target === helpModal) {
       helpModal.style.display = "none";

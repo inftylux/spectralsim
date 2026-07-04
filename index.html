@@ -24,6 +24,12 @@
 
     <section class="panel controls">
       <div class="grid">
+        <label>Messmodus
+          <select id="mode">
+            <option value="emission">Emission</option>
+            <option value="absorption">Absorption</option>
+          </select>
+        </label>
         <label>Quelle
           <select id="source">
             <option value="white">Weißlicht</option>
@@ -34,6 +40,13 @@
             <option value="helium">Heliumlampe</option>
             <option value="neon">Neonlampe</option>
             <option value="custom">Benutzerdefiniert</option>
+          </select>
+        </label>
+        <label id="absorption-label" style="display: none;">Absorptionsbeispiel
+          <select id="absorption_type">
+            <option value="sodium">Natrium (D-Linien)</option>
+            <option value="hydrogen">Wasserstoff (Balmer)</option>
+            <option value="chlorophyll">Chlorophyll-ähnlich (Bänder)</option>
           </select>
         </label>
         <label>Gitterlinien/mm
@@ -86,8 +99,9 @@ Eine interaktive Web-basierte Applikation zur physikalischen Simulation und Expl
 ## 1. Features
 - **Interaktive Spektroskopie:** Unmittelbares visuelles Feedback bei Änderungen von optischen Parametern.
 - **Präzise Ausrichtung:** 1D-Intensitätsdiagramm und 2D-Kamera-Ansicht sind physikalisch exakt synchronisiert. Die Pixelverteilung im Bild folgt streng dem nicht-linearen Dispersionsmodell des Beugungsgitters.
-- **Klassische Spektren:** Auswahl zwischen Weißlicht (Planck-Strahler) und klassischen Emissionsspektren (Wasserstoff, Helium, Neon, Quecksilber, Natrium, Leuchtstoffröhre).
-- **Berechnete Linien:** Tabellarische Ausgabe der berechneten Beugungswinkel und Beugungsordnungen der dominanten Emissionslinien.
+- **Emissions- und Absorptionsspektren:** Emission (helle Linien auf dunklem Hintergrund) und Absorption (dunkle Linien/Bänder auf hellem Kontinuum).
+- **Klassische Spektren:** Auswahl zwischen Weißlicht (Planck-Strahler) und klassischen Emissionsspektren (Wasserstoff, Helium, Neon, Quecksilber, Natrium, Leuchtstoffröhre). Bei Absorption: Natrium-D-Linien, Wasserstoff-Balmer und Chlorophyll-Bänder.
+- **Berechnete Linien:** Tabellarische Ausgabe der berechneten Beugungswinkel und Beugungsordnungen der dominanten Linien.
 
 ---
 
@@ -109,9 +123,10 @@ Je größer die Gitterstrichzahl pro mm (also je kleiner $d$) oder je höher die
 
 ### 2.2 Kontinuierliche vs. Diskrete Spektren
 - **Weißlicht (Kontinuierlich):** Die thermische Emission wird durch das **Plancksche Strahlungsgesetz** angenähert. Die Intensitätsverteilung ist stark abhängig von der Farbtemperatur (z.B. 6500 K für Tageslicht). 
-- **Gasentladungslampen (Diskret):** Atome in Gasen können durch Stöße angeregt werden. Wenn Elektronen auf tiefere Energieniveaus zurückfallen, senden sie Photonen mit exakt definierter Energie aus ($\Delta E = h \cdot f = h \cdot c / \lambda$). Dies führt zu Linienspektren. Die Simulation nutzt für jede Linie normierte Gauß-Profile zur Darstellung der natürlichen bzw. instrumentellen Linienbreite.
+- **Gasentladungslampen (Emission, diskret):** Atome in Gasen können durch Stöße angeregt werden. Wenn Elektronen auf tiefere Energieniveaus zurückfallen, senden sie Photonen mit exakt definierter Energie aus ($\Delta E = h \cdot f = h \cdot c / \lambda$). Dies führt zu hellen Linienspektren.
+- **Absorptionsspektren:** Kaltes Gas oder Moleküle absorbieren spezifische Wellenlängen aus einem kontinuierlichen Hintergrundspektrum (z.B. Weißlicht). Dies erzeugt dunkle Linien oder Bänder. Die Simulation multipliziert ein Basis-Kontinuum mit einer Transmissionsfunktion (Gauß-Dips).
 
-### 2.3 Die Spaltbreite
+### 2.4 Die Spaltbreite
 Jedes reale Spektrometer besitzt einen Eintrittsspalt. Das Spektrometerbild ist im Grunde eine unendliche Überlagerung von farbigen Abbildungen dieses Spaltes. Ein breiter Spalt führt zu viel Licht, aber zu einer instrumentellen Unschärfe, wodurch eng benachbarte Spektrallinien (z.B. das Natrium-Dublett) überlappen können.
 
 ---
@@ -119,7 +134,8 @@ Jedes reale Spektrometer besitzt einen Eintrittsspalt. Das Spektrometerbild ist 
 ## 3. Bedienung & Simulationsparameter
 
 Im Interface stehen folgende Stellschrauben zur Verfügung:
-- **Quelle:** Wählt das simulierte Leuchtmittel aus.
+- **Messmodus:** Umschalten zwischen **Emission** (helle Linien) und **Absorption** (dunkle Linien/Bänder auf hellem Kontinuum).
+- **Quelle / Absorptionsbeispiel:** Bei Absorption wird typischerweise Weißlicht als Kontinuum verwendet.
 - **Gitterlinien/mm:** Regelt die Gitterkonstante $d$. Hohe Linienzahlen erzeugen breitere Spektren.
 - **Beugungsordnung:** Wählt die $n$-te Beugungsordnung. Höhere Ordnungen spreizen das Spektrum stärker, können aber bei realen Spektrometern zu Überlappungen und reduzierter Intensität führen.
 - **Spaltbreite:** Verändert die Breite des Eintrittsspalts und reguliert damit das theoretische Auflösungsvermögen.
@@ -160,6 +176,14 @@ Dieser Lehrplan eignet sich für den Physikunterricht oder das physikalische Pra
 2. Erhöhe die **Beugungsordnung** schrittweise auf 2, dann 3.
 3. Beobachte die Winkel: Bei Ordnung 2 ist das Spektrum doppelt so breit aufgefächert, die Auflösung steigt.
 4. Grenze der Simulation testen: Stelle **1000 Linien/mm** und **Ordnung 2** ein. Was passiert? Einige lange Wellenlängen (Rot) verschwinden aus dem sichtbaren und messbaren Winkelbereich (Totalreflexion oder $\sin(\theta) > 1$). Die Gittergleichung liefert keine reelle Lösung mehr.
+
+### Experiment 5: Absorptionsspektren
+**Ziel:** Verständnis von Absorptionslinien in Astronomie und Chemie.
+1. Wähle **Absorption** als Messmodus und **Natrium** als Beispiel.
+2. Beobachte dunkle Dips im gelben Bereich auf dem hellen Kontinuum.
+3. Wechsle zu **Wasserstoff** – erkenne die Balmer-Linien als dunkle Absorptionslinien.
+4. Bei **Chlorophyll** siehst du breite Absorptionsbänder (typisch für Photosynthese).
+5. Verändere die Spaltbreite: Breite Spalte machen die Linien unschärfer.
 
 
   </script>
