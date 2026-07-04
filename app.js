@@ -365,13 +365,12 @@ function update() {
 
   drawImage(imgData, width, height);
 }
-
 // === DOM READY ===
 document.addEventListener('DOMContentLoaded', function() {
 
   document.querySelectorAll('input').forEach(el => el.addEventListener('input', update));
   document.querySelectorAll('select').forEach(el => el.addEventListener('change', update));
-  
+
   // Modal-Logik
   const helpModal = document.getElementById('helpModal');
   const helpBtn = document.getElementById('helpBtn');
@@ -386,9 +385,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (helpBtn) {
     helpBtn.addEventListener('click', () => {
       helpModal.style.display = "block";
-      if (!helpText.innerHTML) {
+      
+      if (!helpText.innerHTML.trim()) {
         const text = document.getElementById('readmeContent').textContent;
         helpText.innerHTML = marked.parse(text);
+        
         if (window.renderMathInElement) {
           renderMathInElement(helpText, {
             delimiters: [
@@ -397,12 +398,24 @@ document.addEventListener('DOMContentLoaded', function() {
             ]
           });
         }
+
+        // Bild am Ende des Hilfetextes einfügen
+        const img = document.createElement('img');
+        img.src = 'favicon.png';           // ← Hier den Dateinamen anpassen falls nötig
+        img.alt = 'Spektrometer-Simulation Logo';
+        img.style.maxWidth = '50%';
+        img.style.marginTop = '25px';
+        img.style.borderRadius = '8px';
+        img.style.display = 'block';
+        helpText.appendChild(img);
       }
     });
   }
 
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => helpModal.style.display = "none");
+    closeBtn.addEventListener('click', () => {
+      helpModal.style.display = "none";
+    });
   }
 
   // Impressum Modal
@@ -423,9 +436,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Help Modal Außerhalb-Klick
   window.addEventListener('click', (event) => {
-    if (event.target === helpModal) helpModal.style.display = "none";
+    if (event.target === helpModal) {
+      helpModal.style.display = "none";
+    }
   });
 
   setTimeout(update, 100);
 });
-
